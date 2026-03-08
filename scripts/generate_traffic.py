@@ -46,6 +46,10 @@ def main() -> None:
     mode = "DRY RUN" if dry_run else "EXECUTE"
     logger.info("=== generate_traffic.py [%s] ===", mode)
 
+    # Phase gate check.
+    from src.utils import check_phase_gate
+    check_phase_gate("generate_traffic.py", execute=args.execute)
+
     # Load configs.
     traffic_config = load_config("traffic.yaml")
     agent_config = load_config("agent.yaml")

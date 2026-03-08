@@ -178,3 +178,81 @@ def save_result_artifact(filename: str, data: dict) -> Path:
 def timestamp_iso() -> str:
     """Return the current UTC timestamp in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat()
+
+
+# Phase gate prerequisite artifacts.
+# Maps each script to the artifact(s) it requires from prior phases.
+PHASE_PREREQUISITES: dict[str, list[tuple[str, str]]] = {
+    "setup_agent.py": [],  # Phase 4 — no prior artifacts needed
+    "setup_evaluation.py": [
+        ("runs/agent-verification.json", "setup_agent.py --execute"),
+    ],
+    "generate_traffic.py": [
+        ("runs/agent-verification.json", "setup_agent.py --execute"),
+        ("runs/rule-verification.json", "setup_evaluation.py --execute"),
+    ],
+    "verify_evaluation.py": [
+        ("runs/rule-verification.json", "setup_evaluation.py --execute"),
+        ("runs/traffic-log.json", "generate_traffic.py --execute"),
+    ],
+    "collect_results.py": [
+        ("runs/traffic-log.json", "generate_traffic.py --execute"),
+    ],
+}
+
+
+def check_phase_gate(script_name: str, *, execute: bool) -> bool:
+    """Check that prerequisite artifacts from prior phases exist.
+
+    In dry-run mode, missing prerequisites are logged as warnings.
+    In execute mode, missing prerequisites cause the script to exit.
+
+    Args:
+        script_name: Name of the current script (e.g., "generate_traffic.py").
+        execute: Whether the script is running in execute mode.
+
+    Returns:
+        True if all prerequisites are met or in dry-run mode.
+    """
+    prereqs = PHASE_PREREQUISITES.get(script_name, [])
+    if not prereqs:
+        return True
+
+    logger = logging.getLogger("cont-eval")
+    missing = []
+
+    for artifact_path, remedy in prereqs:
+        full_path = PROJECT_ROOT / artifact_path
+        if not full_path.exists():
+            missing.append((artifact_path, remedy))
+        else:
+            # Check it's not a dry-run artifact when in execute mode.
+            if execute:
+                try:
+                    with open(full_path) as f:
+                        data = json.load(f)
+                    if data.get("mode") == "dry-run":
+                        missing.append((artifact_path, remedy))
+                        logger.warning(
+                            "Phase gate: %s exists but is a dry-run artifact. "
+                            "Run '%s' first.", artifact_path, remedy,
+                        )
+                except (json.JSONDecodeError, KeyError):
+                    pass  # Non-JSON or missing mode field — treat as valid.
+
+    if not missing:
+        logger.info("Phase gate: all prerequisites met for %s.", script_name)
+        return True
+
+    for artifact_path, remedy in missing:
+        msg = "Phase gate: missing prerequisite '%s'. Run '%s' first."
+        if execute:
+            logger.error(msg, artifact_path, remedy)
+        else:
+            logger.warning(msg + " (continuing in dry-run mode)", artifact_path, remedy)
+
+    if execute:
+        logger.error("Phase gate check FAILED. Cannot proceed in execute mode.")
+        sys.exit(1)
+
+    return False

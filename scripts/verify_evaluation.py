@@ -92,6 +92,10 @@ def main() -> None:
     mode = "DRY RUN" if dry_run else "EXECUTE"
     logger.info("=== verify_evaluation.py [%s] ===", mode)
 
+    # Phase gate check.
+    from src.utils import check_phase_gate
+    check_phase_gate("verify_evaluation.py", execute=args.execute)
+
     # Resolve eval ID.
     eval_id = args.eval_id or _load_eval_id_from_artifact()
     if not eval_id:
@@ -209,6 +213,16 @@ def main() -> None:
     logger.info("Artifact saved to: runs/eval-runs.json")
 
 
+def _load_max_hourly_runs() -> int:
+    """Load the configured max_hourly_runs from agent.yaml."""
+    try:
+        from src.utils import load_config
+        config = load_config("agent.yaml")
+        return config.get("evaluation", {}).get("max_hourly_runs", 100)
+    except Exception:
+        return 100  # Default per Azure docs.
+
+
 def _compute_verdict(
     runs: list,
     trace_rows: list,
@@ -220,6 +234,9 @@ def _compute_verdict(
     has_traces = len(trace_rows) > 0
     has_traffic = len(traffic_run_ids) > 0
     all_matched = has_traffic and len(matched_runs) == len(traffic_run_ids)
+
+    max_hourly = _load_max_hourly_runs()
+    hourly_limit_likely_hit = len(runs) >= max_hourly
 
     if not has_traffic:
         overall = "NO_TRAFFIC"
@@ -236,6 +253,12 @@ def _compute_verdict(
             f"Some evaluation data found. Runs: {len(runs)}, "
             f"Traces: {len(trace_rows)}, Matched: {len(matched_runs)}/{len(traffic_run_ids)}."
         )
+        if hourly_limit_likely_hit:
+            detail += (
+                f" WARNING: {len(runs)} runs found matches max_hourly_runs={max_hourly}. "
+                "Hourly rate limit may have been reached. Consider increasing max_hourly_runs "
+                "or waiting for the next hour."
+            )
     else:
         overall = "UNKNOWN"
         detail = "Unexpected state."
@@ -247,6 +270,8 @@ def _compute_verdict(
         "eval_traces_found": has_traces,
         "traffic_sent": has_traffic,
         "all_traffic_matched": all_matched,
+        "max_hourly_runs": max_hourly,
+        "hourly_limit_likely_hit": hourly_limit_likely_hit,
     }
 
 

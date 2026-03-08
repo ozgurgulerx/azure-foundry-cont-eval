@@ -46,6 +46,10 @@ def main() -> None:
     mode = "DRY RUN" if dry_run else "EXECUTE"
     logger.info("=== setup_evaluation.py [%s] ===", mode)
 
+    # Phase gate check.
+    from src.utils import check_phase_gate
+    check_phase_gate("setup_evaluation.py", execute=args.execute)
+
     # Load configs.
     agent_config = load_config("agent.yaml")
     eval_config = load_config("evaluators.yaml")

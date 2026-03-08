@@ -50,12 +50,17 @@ def _load_json_artifact(subdir: str, filename: str) -> dict | None:
 def main() -> None:
     parser = create_arg_parser("Export evaluation results and run custom evaluators.")
     args = parser.parse_args()
+
+    from src.utils import check_phase_gate
     logger = setup_logging(args.log_level)
     load_env()
 
     dry_run = not args.execute
     mode = "DRY RUN" if dry_run else "EXECUTE"
     logger.info("=== collect_results.py [%s] ===", mode)
+
+    # Phase gate check.
+    check_phase_gate("collect_results.py", execute=args.execute)
 
     # Load evaluator config for pass criteria.
     eval_config = load_config("evaluators.yaml")
