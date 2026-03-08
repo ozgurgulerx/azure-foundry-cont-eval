@@ -1,20 +1,36 @@
 # Azure resource identifiers — NO SECRETS
-# Phase 1: Placeholder — to be completed in Phase 2
-# Actual values come from .env; this file documents the structure.
+# Phase 2: Structure finalized. Actual values come from .env.
+#
+# This file documents the expected Azure resource topology.
+# All sensitive values (connection strings, endpoints) are in .env only.
 
 azure:
-  subscription_id: ""       # From AZURE_SUBSCRIPTION_ID
-  resource_group: ""        # From AZURE_RESOURCE_GROUP
-  region: ""                # From AZURE_REGION
+  subscription_id: ""         # From AZURE_SUBSCRIPTION_ID
+  resource_group: ""          # From AZURE_RESOURCE_GROUP
+  region: ""                  # From AZURE_REGION — must support GPT-4o + Foundry agents
 
 ai_foundry:
-  project_name: ""          # From AZURE_AI_PROJECT_NAME
-  connection_string: ""     # From AZURE_AI_PROJECT_CONNECTION_STRING
+  # Must be a Foundry project (NOT hub-based).
+  # See: https://learn.microsoft.com/en-us/azure/ai-foundry/what-is-foundry#how-do-i-know-which-type-of-project-i-have
+  project_endpoint: ""        # From AZURE_AI_PROJECT_ENDPOINT
+  project_type: foundry       # Required for continuous evaluation (hub-based NOT supported)
 
 model:
-  endpoint: ""              # From AZURE_AI_SERVICES_ENDPOINT
-  deployment_name: gpt-4o   # From AZURE_MODEL_DEPLOYMENT_NAME
+  deployment_name: gpt-4o     # From AZURE_MODEL_DEPLOYMENT_NAME
+  api_version: "2025-01-01"   # Pin for reproducibility
 
 application_insights:
-  connection_string: ""     # From APPLICATIONINSIGHTS_CONNECTION_STRING
-  resource_id: ""           # From APPINSIGHTS_RESOURCE_ID
+  connection_string: ""       # From APPLICATIONINSIGHTS_CONNECTION_STRING
+  resource_id: ""             # From APPINSIGHTS_RESOURCE_ID
+  workspace_id: ""            # From LOGS_WORKSPACE_ID — for Kusto queries
+
+rbac:
+  # The project's managed identity must have this role
+  # for evaluation rules to function.
+  required_roles:
+    - role: "Azure AI User"
+      scope: "Foundry project resource"
+      assignee: "Project managed identity"
+    - role: "Log Analytics Reader"
+      scope: "Application Insights / Log Analytics workspace"
+      assignee: "User running verification scripts"

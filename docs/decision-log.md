@@ -50,7 +50,7 @@ All project decisions and assumptions are recorded here. Each entry is immutable
 - **Decision:** Design all timing around a 1-hour evaluation cadence.
 - **Rationale:** Azure AI Foundry documentation indicates hourly as the evaluation cadence for continuous evaluation. Test design must account for this delay.
 - **Alternatives Considered:** Sub-hourly cadence (not supported in preview as of spec date).
-- **Status:** Active
+- **Status:** Superseded by D-010
 
 ### D-005: Dry-run default for all state-changing scripts
 - **Date:** 2026-03-08
@@ -68,21 +68,71 @@ All project decisions and assumptions are recorded here. Each entry is immutable
 - **Alternatives Considered:** Azure Monitor Logs, custom telemetry. Deferred unless Application Insights proves insufficient.
 - **Status:** Active
 
+### D-007: Target New Foundry portal API (not Classic)
+- **Date:** 2026-03-08
+- **Phase:** 2
+- **Decision:** Use the New Foundry portal API pattern (`EvaluationRule` + `ContinuousEvaluationRuleAction`) instead of the Classic pattern (`AgentEvaluationRequest`).
+- **Rationale:** The New Foundry API is the current recommended approach. Classic docs redirect to it. The New API uses `evaluation_rules.create_or_update()` and `openai_client.evals.create()`.
+- **Alternatives Considered:** Classic `AgentEvaluationRequest` pattern. Rejected because it is the legacy approach.
+- **Status:** Active
+
+### D-008: Contoso Solar as the fictional knowledge base domain
+- **Date:** 2026-03-08
+- **Phase:** 2
+- **Decision:** Use a fictional "Contoso Solar" renewable energy company as the knowledge base domain.
+- **Rationale:** Provides structured, factual content across 6 sections (company, products, installation, warranty, financing, service areas). All facts are verifiable against the knowledge base, enabling groundedness evaluation. Uses the familiar "Contoso" naming convention from Azure samples.
+- **Alternatives Considered:** Generic FAQ, random facts. Rejected because a coherent domain makes citation verification more meaningful.
+- **Status:** Active
+
+### D-009: SDK version pinned to azure-ai-projects >= 2.0.0b2
+- **Date:** 2026-03-08
+- **Phase:** 2
+- **Decision:** Use `azure-ai-projects>=2.0.0b2` (not 1.0.0b*). Remove `azure-ai-evaluation` as a direct dependency — evaluator definitions are handled via the `testing_criteria` in the evals API.
+- **Rationale:** The 2.0.0b2 SDK includes `evaluation_rules`, `PromptAgentDefinition`, and the OpenAI evals integration needed for continuous evaluation.
+- **Alternatives Considered:** 1.0.0b7 (does not include new Foundry APIs).
+- **Status:** Active
+
+### D-010: Event-driven evaluation model (corrects D-004)
+- **Date:** 2026-03-08
+- **Phase:** 2
+- **Decision:** Continuous evaluation is event-driven (triggers per `RESPONSE_COMPLETED`), rate-limited by `max_hourly_runs`. This supersedes D-004 which assumed hourly cadence.
+- **Rationale:** Confirmed from official docs — evaluation rules fire on events, not on a timer. `max_hourly_runs` (default 100, system max 1000) controls throughput.
+- **Alternatives Considered:** N/A — this is a factual correction.
+- **Status:** Active (supersedes D-004)
+
+### D-011: Foundry project required (not hub-based)
+- **Date:** 2026-03-08
+- **Phase:** 2
+- **Decision:** The Azure AI Foundry project must be a "Foundry project" type, not a "hub-based project". Hub-based projects do not support continuous evaluation.
+- **Rationale:** Explicitly stated in the official documentation prerequisites.
+- **Alternatives Considered:** N/A — this is a hard requirement.
+- **Status:** Active
+
+### D-012: Agent created via create_version with PromptAgentDefinition
+- **Date:** 2026-03-08
+- **Phase:** 2
+- **Decision:** Use `project_client.agents.create_version()` with `PromptAgentDefinition` to create the agent. This is the new Foundry SDK pattern.
+- **Rationale:** Confirmed from the new Foundry docs. The older `agents.create_agent()` pattern is for classic Foundry.
+- **Alternatives Considered:** Classic `create_agent()` pattern. Not compatible with new Foundry evaluation rules.
+- **Status:** Active
+
 ---
 
 ## Assumptions
 
 Assumptions are also listed in SPEC.md Section 5. This log tracks any updates.
 
-| ID | Assumption | Recorded | Status |
-|----|-----------|----------|--------|
-| A1 | Continuous evaluation preview available in target subscription/region | 2026-03-08 | Unverified |
-| A2 | GPT-4o available in chosen region | 2026-03-08 | Unverified |
-| A3 | Evaluation triggers on agent thread/run completions | 2026-03-08 | Unverified |
-| A4 | Hourly evaluation cadence | 2026-03-08 | Unverified |
-| A5 | Application Insights is the required telemetry sink | 2026-03-08 | Unverified |
-| A6 | Built-in evaluators available for continuous evaluation | 2026-03-08 | Unverified |
-| A7 | Evaluation results queryable via SDK/REST | 2026-03-08 | Unverified |
-| A8 | At most one evaluation run per hour per schedule | 2026-03-08 | Unverified |
-| A9 | Skipped runs when no new data | 2026-03-08 | Unverified |
-| A10 | Single project sufficient | 2026-03-08 | Unverified |
+| ID | Assumption | Recorded | Updated | Status |
+|----|-----------|----------|---------|--------|
+| A1 | Continuous evaluation preview available in target subscription/region | 2026-03-08 | — | Unverified |
+| A2 | GPT-4o available in chosen region | 2026-03-08 | — | Unverified |
+| A3 | Evaluation triggers on RESPONSE_COMPLETED events | 2026-03-08 | 2026-03-08 | **Confirmed** (docs) |
+| A4 | Event-driven eval, rate-limited by max_hourly_runs (default 100) | 2026-03-08 | 2026-03-08 | **Corrected** (was: hourly cadence) |
+| A5 | Application Insights is the required telemetry sink | 2026-03-08 | 2026-03-08 | **Confirmed** (docs) |
+| A6 | Built-in evaluators available as builtin.* names | 2026-03-08 | 2026-03-08 | **Confirmed** (docs) |
+| A7 | Evaluation results queryable via openai_client.evals.runs.list() and Kusto | 2026-03-08 | 2026-03-08 | **Confirmed** (docs) |
+| A8 | max_hourly_runs controls rate limit (default 100, max 1000) | 2026-03-08 | 2026-03-08 | **Corrected** (was: one run/hr) |
+| A9 | Skipped runs when hourly limit exhausted | 2026-03-08 | 2026-03-08 | **Corrected** (was: no new data) |
+| A10 | Single project sufficient | 2026-03-08 | — | Unverified |
+| A11 | Must be Foundry project type (not hub-based) | 2026-03-08 | — | **Confirmed** (docs) |
+| A12 | Project managed identity needs Azure AI User role | 2026-03-08 | — | **Confirmed** (docs) |

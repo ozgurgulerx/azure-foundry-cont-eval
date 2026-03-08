@@ -1,14 +1,32 @@
-# Project-level settings
-# Phase 1: Placeholder — values to be finalized in Phase 2+
+# Project-level settings — Phase 2
 
 project:
   name: azure-foundry-cont-eval
-  version: "0.1.0"
-  phase: 1
-  spec_version: "0.1.0"
+  version: "0.2.0"
+  phase: 2
+  spec_version: "0.2.0"
 
 defaults:
   dry_run: true
   log_level: INFO
   output_dir: runs
   results_dir: results
+
+sdk:
+  azure_ai_projects: ">=2.0.0b2"
+  azure_identity: ">=1.19.0"
+  azure_monitor_query: ">=1.4.0"
+
+agent:
+  config_file: configs/agent.yaml
+  knowledge_base_file: data/knowledge_base.md
+
+evaluation:
+  config_file: configs/evaluators.yaml
+  max_hourly_runs: 100
+  event_type: RESPONSE_COMPLETED
+
+verification:
+  poll_interval_seconds: 30
+  max_wait_seconds: 900   # 15 minutes
+  appinsights_ingestion_delay_seconds: 300  # 5 minutes

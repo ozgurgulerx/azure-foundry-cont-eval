@@ -1,7 +1,7 @@
 # SPEC: Azure AI Foundry Continuous Evaluation for Agents — Test Repository
 
-**Version:** 0.1.0
-**Status:** Phase 0 — Governing Spec
+**Version:** 0.2.0
+**Status:** Phase 2 — Agent Scenario & Observability Defined
 **Created:** 2026-03-08
 **Author:** Project scaffolding agent
 
@@ -31,7 +31,7 @@ This project tests **the evaluation feature itself**, not the underlying model's
 | Area | Details |
 |------|---------|
 | Agent scenario | Minimal single-agent with a grounded, traceable task (Q&A over a small knowledge base). |
-| Continuous evaluation config | Create and manage evaluation schedules via Azure AI Foundry SDK / REST. |
+| Continuous evaluation config | Create and manage evaluation rules via Azure AI Foundry SDK (EvaluationRule + ContinuousEvaluationRuleAction). |
 | Observability | Application Insights connection, trace collection, telemetry verification. |
 | Evaluators | Built-in evaluators (groundedness, relevance, coherence, fluency, similarity) and custom deterministic evaluators. |
 | Traffic generation | Scripted, controlled prompts with known-good expected outputs. |
@@ -53,27 +53,28 @@ This project tests **the evaluation feature itself**, not the underlying model's
 
 | Resource | Purpose | SKU / Tier |
 |----------|---------|------------|
-| Azure AI Foundry hub + project | Host the agent and evaluation | Standard |
+| Azure AI Foundry project | Host the agent and evaluation (must be Foundry project, NOT hub-based) | Standard |
 | Azure AI Services (multi-service) | Model deployment (GPT-4o) | S0 or pay-as-you-go |
 | Application Insights | Telemetry collection for continuous evaluation | Standard |
-| Azure Blob Storage | Agent file storage (knowledge base) | Standard LRS |
+| Log Analytics Workspace | Kusto queries for verification | Associated with AppInsights |
+| Azure Blob Storage | Agent file storage (knowledge base) | Standard LRS (managed by Foundry) |
 
 ### Local Tooling
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Python | >= 3.10 | Scripts and SDK usage |
-| azure-ai-projects SDK | >= 1.0.0b* | Agent creation, evaluation rule management |
-| azure-ai-evaluation SDK | >= 1.0.0b* | Evaluator definitions |
-| azure-identity | latest | Authentication |
-| Azure CLI | >= 2.60 | Resource provisioning |
-| jq | any | JSON processing in verification scripts |
+| Python | >= 3.9 | Scripts and SDK usage |
+| azure-ai-projects SDK | >= 2.0.0b2 | Agent creation, evaluation rule management, OpenAI evals client |
+| azure-identity | latest | Authentication (DefaultAzureCredential) |
+| azure-monitor-query | >= 1.4.0 | Log Analytics / Kusto queries for verification |
+| Azure CLI | >= 2.60 | Resource provisioning and RBAC setup |
 
 ### Accounts & Permissions
 
 - Azure subscription with Contributor access to a resource group.
-- Ability to create AI Foundry projects and deploy models.
+- Ability to create AI Foundry projects (Foundry type, not hub-based) and deploy models.
 - Ability to create and manage Application Insights resources.
+- Ability to assign RBAC roles (Azure AI User on project managed identity; Log Analytics Reader for verification).
 
 ## 5. Assumptions
 
@@ -83,13 +84,13 @@ All assumptions are recorded here and in `/docs/decision-log.md`.
 |----|-----------|-----------------|
 | A1 | Continuous evaluation for Agents is available in preview in the target subscription and region. | Blocker — must verify in Phase 2. |
 | A2 | GPT-4o is available for deployment in the chosen region. | Must pick a region where GPT-4o is available. |
-| A3 | Continuous evaluation triggers on agent thread/run completions, not on raw model calls. | Affects how traffic generation is structured. |
-| A4 | Evaluation runs are scheduled hourly (or on a configurable cadence) and process a sample of recent interactions. | Affects test timing and verification window. |
-| A5 | Application Insights is the required telemetry sink for continuous evaluation. | If another sink is supported, update observability setup. |
-| A6 | Built-in evaluators (groundedness, relevance, coherence, fluency) are available for continuous evaluation without custom code. | If not, must implement them as custom evaluators. |
-| A7 | Evaluation results are queryable via SDK/REST, not only visible in the portal UI. | If only portal, verification will rely on screenshots. |
-| A8 | The hourly evaluation limit means at most one evaluation run per hour per schedule. | Affects how many traffic bursts we plan. |
-| A9 | Skipped runs occur when there is no new data since the last evaluation. | Must ensure traffic generation happens before the evaluation window. |
+| A3 | Continuous evaluation triggers on `RESPONSE_COMPLETED` events via `EvaluationRule`. | **Confirmed** — docs show `EvaluationRuleEventType.RESPONSE_COMPLETED`. |
+| A4 | Evaluation runs are event-driven (per response), rate-limited by `max_hourly_runs` (default 100, max 1000). | **Corrected** — not hourly cadence but event-driven with hourly rate cap. |
+| A5 | Application Insights is the required telemetry sink for continuous evaluation. | **Confirmed** — docs require AppInsights connection. |
+| A6 | Built-in evaluators (violence, groundedness, relevance, coherence, fluency) are available as `builtin.*` evaluator names. | **Confirmed** — docs show `builtin.violence` pattern. |
+| A7 | Evaluation results are queryable via `openai_client.evals.runs.list()` and via Kusto queries on Application Insights. | **Confirmed** — docs show both methods. |
+| A8 | `max_hourly_runs` controls how many evaluation runs can execute per hour per rule (default 100, system limit 1000). | **Corrected** — not one-per-hour; rate-limited per hour. |
+| A9 | Skipped runs occur when hourly run limit is reached. | **Corrected** — skips due to rate limit, not absence of data. |
 | A10 | A single Azure AI Foundry project is sufficient; no cross-project evaluation is needed. | Simplifies setup. |
 
 ## 6. Repository Structure
@@ -184,7 +185,7 @@ azure-foundry-cont-eval/
 |-------|--------|----------|
 | Agent is created and responds | Script output + thread/run IDs | `runs/agent-verification.json` |
 | Application Insights receives traces | Kusto query on AppInsights | Query result export |
-| Continuous evaluation schedule exists | SDK list schedules call | `runs/schedule-verification.json` |
+| Continuous evaluation rule exists and is enabled | SDK get evaluation rule | `runs/rule-verification.json` |
 | Evaluation run is triggered | SDK list evaluation runs | `runs/eval-runs.json` |
 | Evaluation results contain expected evaluators | SDK get evaluation results | `results/eval-results.json` |
 | Built-in evaluator scores are within expected range | Programmatic threshold check | `results/score-summary.json` |
@@ -193,15 +194,16 @@ azure-foundry-cont-eval/
 
 ### Verification Timing
 
-- Traffic must be generated **before** the next evaluation window.
-- Verification script must be run **after** the evaluation window closes.
-- Minimum wait: 1 hour after traffic generation (due to hourly cadence).
-- The verification script will poll with backoff, up to a configurable timeout.
+- Evaluation is event-driven: each response can trigger an eval run.
+- Allow 2–5 minutes for Application Insights ingestion after traffic.
+- Verification script polls with backoff, up to a configurable timeout (default 15 minutes).
+- Eval run results are also queryable via `openai_client.evals.runs.list()` with `report_url`.
 
 ### Skipped-Run Handling
 
-- If a run is skipped (no new data), the verification script logs this as an expected outcome if no traffic was sent in that window.
-- If a run is skipped despite traffic being sent, this is flagged as a failure for investigation.
+- If a run is skipped, it is likely due to `max_hourly_runs` being exhausted.
+- The verification script checks hourly run count and logs whether the limit was reached.
+- If runs are skipped despite being under the limit, this is flagged for investigation.
 
 ## 10. Phase Gates
 
@@ -277,31 +279,36 @@ azure-foundry-cont-eval/
 
 ## 13. Continuous Evaluation Specifics
 
-### How Continuous Evaluation Works (Preview Understanding)
+### How Continuous Evaluation Works (Verified from Docs — March 2026)
 
-1. An agent is deployed in an Azure AI Foundry project.
+1. A **Foundry project** (not hub-based) is created with an agent.
 2. Application Insights is connected to the project for telemetry/tracing.
-3. A continuous evaluation schedule is created, specifying:
-   - Which evaluators to run.
-   - Which agent to evaluate.
-   - Evaluation cadence (hourly).
-   - Sampling configuration.
-4. The agent receives traffic (user interactions via threads/runs).
-5. At each evaluation cadence, the system samples recent interactions and runs the configured evaluators.
-6. Results appear in the Azure AI Foundry monitoring experience and are queryable via SDK/REST.
+3. An **evaluation object** is created via `openai_client.evals.create()` specifying:
+   - `data_source_config`: `{"type": "azure_ai_source", "scenario": "responses"}`
+   - `testing_criteria`: list of `{"type": "azure_ai_evaluator", "evaluator_name": "builtin.*"}` entries
+4. A **continuous evaluation rule** is created via `project_client.evaluation_rules.create_or_update()`:
+   - `ContinuousEvaluationRuleAction(eval_id=..., max_hourly_runs=100)`
+   - `EvaluationRuleEventType.RESPONSE_COMPLETED`
+   - `EvaluationRuleFilter(agent_name=...)`
+5. When the agent produces a response, the rule fires and runs the configured evaluators.
+6. Results appear in Application Insights as `gen_ai.evaluation.result` traces and in the Foundry Monitor dashboard.
+7. Results are queryable via `openai_client.evals.runs.list()` (includes `report_url`).
 
 ### Key Constraints
 
-- **Hourly cadence**: At most one evaluation run per hour per schedule.
-- **Sampling**: Not all interactions may be evaluated; sampling rate may be configurable.
-- **Skipped runs**: If no new data exists, the run is skipped.
+- **Event-driven**: Evaluations trigger per response, not on a schedule.
+- **Rate limit**: `max_hourly_runs` caps evaluations per hour (default 100, system max 1000).
+- **Skipped runs**: Occur when hourly rate limit is exhausted. Increase `max_hourly_runs` or wait.
+- **Project type**: Must be a Foundry project, not hub-based.
+- **RBAC**: Project managed identity needs Azure AI User role.
 - **Preview limitations**: API surface may change; features may be incomplete.
 
 ### Test Design Implications
 
-- Traffic must be generated in controlled bursts **within** an evaluation window.
-- Verification must account for the delay between traffic and evaluation completion.
-- Multiple test cycles may be needed (each requiring ~1 hour wait).
+- Each agent response can trigger an evaluation (event-driven, not batched).
+- With `max_hourly_runs=100` and 10 test prompts, all should be evaluated.
+- Verification can begin shortly after traffic (minutes, not hours).
+- Allow for Application Insights ingestion delay (typically 2-5 minutes).
 - Test prompts should be distinct enough to identify in evaluation results.
 
 ## 14. Reference Documentation
