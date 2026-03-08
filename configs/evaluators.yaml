@@ -1,0 +1,11 @@
+# Evaluator definitions and pass criteria
+# Phase 1: Placeholder — to be completed in Phase 3
+
+evaluators:
+  builtin: []
+    # Phase 3: List built-in evaluators with thresholds
+  custom: []
+    # Phase 3: List custom deterministic evaluators with thresholds
+
+pass_criteria: {}
+  # Phase 3: Evaluator name → threshold mapping

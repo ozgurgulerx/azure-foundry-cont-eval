@@ -1,0 +1,10 @@
+# Traffic generation parameters
+# Phase 1: Placeholder — to be completed in Phase 5
+
+traffic:
+  prompts: []
+    # Phase 5: List of test prompts with expected response properties
+  volume:
+    total_prompts: 10  # Phase 5: Adjust based on evaluation sampling
+    batch_size: 5
+    delay_between_batches_seconds: 5

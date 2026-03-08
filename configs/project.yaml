@@ -1,0 +1,14 @@
+# Project-level settings
+# Phase 1: Placeholder — values to be finalized in Phase 2+
+
+project:
+  name: azure-foundry-cont-eval
+  version: "0.1.0"
+  phase: 1
+  spec_version: "0.1.0"
+
+defaults:
+  dry_run: true
+  log_level: INFO
+  output_dir: runs
+  results_dir: results

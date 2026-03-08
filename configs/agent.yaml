@@ -1,0 +1,11 @@
+# Agent configuration
+# Phase 1: Placeholder — to be completed in Phase 2
+
+agent:
+  name: cont-eval-test-agent
+  model: gpt-4o
+  instructions: ""  # Phase 2: Agent system prompt
+  knowledge_base:
+    file: data/knowledge_base.md
+  temperature: 0.0  # Deterministic for reproducibility
+  top_p: 1.0

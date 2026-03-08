@@ -1,0 +1,20 @@
+# Azure resource identifiers — NO SECRETS
+# Phase 1: Placeholder — to be completed in Phase 2
+# Actual values come from .env; this file documents the structure.
+
+azure:
+  subscription_id: ""       # From AZURE_SUBSCRIPTION_ID
+  resource_group: ""        # From AZURE_RESOURCE_GROUP
+  region: ""                # From AZURE_REGION
+
+ai_foundry:
+  project_name: ""          # From AZURE_AI_PROJECT_NAME
+  connection_string: ""     # From AZURE_AI_PROJECT_CONNECTION_STRING
+
+model:
+  endpoint: ""              # From AZURE_AI_SERVICES_ENDPOINT
+  deployment_name: gpt-4o   # From AZURE_MODEL_DEPLOYMENT_NAME
+
+application_insights:
+  connection_string: ""     # From APPLICATIONINSIGHTS_CONNECTION_STRING
+  resource_id: ""           # From APPINSIGHTS_RESOURCE_ID
