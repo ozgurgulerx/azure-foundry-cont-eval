@@ -110,12 +110,12 @@ python scripts/collect_results.py          # Export results
 |-------|-------------|--------|
 | 0 | Governing spec | Complete |
 | 1 | Repository scaffolding | Complete |
-| 2 | Agent scenario + observability prerequisites | Pending |
-| 3 | Evaluator definitions | Pending |
-| 4 | Setup scripts implementation | Pending |
-| 5 | Traffic generation implementation | Pending |
-| 6 | Verification workflow implementation | Pending |
-| 7 | Final report | Pending |
+| 2 | Agent scenario + observability prerequisites | Complete |
+| 3 | Evaluator definitions | Complete |
+| 4 | Setup scripts implementation | Complete |
+| 5 | Traffic generation implementation | Complete |
+| 6 | Verification workflow implementation | Complete |
+| 7 | Final report | Complete |
 
 ## License
 

@@ -1,7 +1,7 @@
 # SPEC: Azure AI Foundry Continuous Evaluation for Agents — Test Repository
 
-**Version:** 0.2.0
-**Status:** Phase 2 — Agent Scenario & Observability Defined
+**Version:** 1.0.0
+**Status:** Phase 7 — Complete
 **Created:** 2026-03-08
 **Author:** Project scaffolding agent
 

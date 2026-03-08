@@ -31,6 +31,7 @@ runs/*
 !runs/.gitkeep
 results/*
 !results/.gitkeep
+!results/final-report.md
 
 # Azure
 *.tfstate

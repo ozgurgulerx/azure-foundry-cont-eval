@@ -2,9 +2,9 @@
 
 project:
   name: azure-foundry-cont-eval
-  version: "0.2.0"
-  phase: 2
-  spec_version: "0.2.0"
+  version: "1.0.0"
+  phase: 7
+  spec_version: "1.0.0"
 
 defaults:
   dry_run: true
