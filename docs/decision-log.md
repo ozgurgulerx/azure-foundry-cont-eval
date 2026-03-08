@@ -140,6 +140,22 @@ All project decisions and assumptions are recorded here. Each entry is immutable
 - **Alternatives Considered:** builtin.hate, builtin.self_harm. Could be added but would be redundant for this test scenario.
 - **Status:** Active
 
+### D-016: Two-client SDK pattern (AIProjectClient + OpenAI client)
+- **Date:** 2026-03-08
+- **Phase:** 4
+- **Decision:** Use `AIProjectClient` for agent management and evaluation rules, and `project_client.get_openai_client()` for eval object creation and run listing.
+- **Rationale:** This matches the official SDK architecture. Agent CRUD and rule management are on the project client; eval objects and runs are on the OpenAI client.
+- **Alternatives Considered:** Single client approach. Not supported by the SDK architecture.
+- **Status:** Active
+
+### D-017: Lazy Azure SDK imports in execute mode only
+- **Date:** 2026-03-08
+- **Phase:** 4
+- **Decision:** Import Azure SDK packages (`azure.ai.projects`, `azure.identity`, etc.) inside execute-mode code paths only, not at module top level.
+- **Rationale:** Allows dry-run mode to work without Azure SDK installed. Users can inspect configs and script behaviour before installing dependencies.
+- **Alternatives Considered:** Top-level imports with try/except. Rejected — less clear error messages and masks missing dependencies.
+- **Status:** Active
+
 ---
 
 ## Assumptions
