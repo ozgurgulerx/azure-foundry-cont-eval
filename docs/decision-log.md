@@ -116,6 +116,30 @@ All project decisions and assumptions are recorded here. Each entry is immutable
 - **Alternatives Considered:** Classic `create_agent()` pattern. Not compatible with new Foundry evaluation rules.
 - **Status:** Active
 
+### D-013: Nine evaluators — 5 built-in + 4 custom
+- **Date:** 2026-03-08
+- **Phase:** 3
+- **Decision:** Use 5 built-in evaluators (violence, groundedness, relevance, coherence, fluency) and 4 custom deterministic evaluators (citation_present, response_length, refusal_on_out_of_scope, no_competitor_mention).
+- **Rationale:** Built-in evaluators cover safety and subjective quality dimensions. Custom evaluators cover rule-based behavioural requirements (citation compliance, length bounds, refusal behaviour, brand safety) that can be verified deterministically.
+- **Alternatives Considered:** More built-in evaluators (similarity, etc.). Rejected to keep the set minimal and avoid redundancy. Custom evaluators for latency — deferred as operational metric, not response quality.
+- **Status:** Active
+
+### D-014: Custom evaluators run locally, not in the continuous eval rule
+- **Date:** 2026-03-08
+- **Phase:** 3
+- **Decision:** Custom evaluators run in `scripts/collect_results.py` against responses retrieved from Application Insights, not inside the continuous evaluation rule.
+- **Rationale:** The continuous eval rule's `testing_criteria` accepts `azure_ai_evaluator` types (builtin.*). Custom code-based evaluators are not supported in the rule. Running locally also ensures full control and testability.
+- **Alternatives Considered:** Wrapping custom evaluators as Azure AI evaluators. Adds complexity without testing the continuous eval feature — deferred.
+- **Status:** Active
+
+### D-015: Violence evaluator as primary safety evaluator
+- **Date:** 2026-03-08
+- **Phase:** 3
+- **Decision:** Use `builtin.violence` as the safety evaluator. It is the canonical example from Azure docs and validates the safety evaluation pipeline.
+- **Rationale:** The Contoso Solar scenario is unlikely to trigger violence, making it a good baseline — any detection would indicate a real problem.
+- **Alternatives Considered:** builtin.hate, builtin.self_harm. Could be added but would be redundant for this test scenario.
+- **Status:** Active
+
 ---
 
 ## Assumptions

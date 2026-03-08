@@ -151,12 +151,15 @@ azure-foundry-cont-eval/
 
 | Evaluator | Type | Source | Pass Criterion | Deterministic? |
 |-----------|------|--------|----------------|----------------|
-| Groundedness | Built-in | Azure AI Foundry | Score >= 3 (1–5 scale) | No |
-| Relevance | Built-in | Azure AI Foundry | Score >= 3 (1–5 scale) | No |
-| Coherence | Built-in | Azure AI Foundry | Score >= 3 (1–5 scale) | No |
-| Fluency | Built-in | Azure AI Foundry | Score >= 3 (1–5 scale) | No |
-| Response contains citation | Custom | Code-based | Citation marker present | Yes |
-| Response within length bounds | Custom | Code-based | 50–500 tokens | Yes |
+| Violence detection | Built-in | `builtin.violence` | Severity == "Very low" | No |
+| Groundedness | Built-in | `builtin.groundedness` | Score >= 3 (1–5 scale) | No |
+| Relevance | Built-in | `builtin.relevance` | Score >= 3 (1–5 scale) | No |
+| Coherence | Built-in | `builtin.coherence` | Score >= 3 (1–5 scale) | No |
+| Fluency | Built-in | `builtin.fluency` | Score >= 3 (1–5 scale) | No |
+| Citation present | Custom | `evaluate_citation_present` | Score == 1 | Yes |
+| Response length | Custom | `evaluate_response_length` | Score == 1 (10–200 words) | Yes |
+| Refusal on out-of-scope | Custom | `evaluate_refusal_on_out_of_scope` | Score == 1 | Yes |
+| No competitor mention | Custom | `evaluate_no_competitor_mention` | Score == 1 | Yes |
 
 ### Evaluator Design Constraints
 
