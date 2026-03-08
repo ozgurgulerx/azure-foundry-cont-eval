@@ -1,10 +1,102 @@
-# Traffic generation parameters
-# Phase 1: Placeholder — to be completed in Phase 5
+# Traffic generation parameters — Phase 5
+#
+# Each prompt has:
+#   - id: unique identifier for tracing
+#   - text: the user message to send
+#   - is_out_of_scope: whether the question is outside the knowledge base
+#   - expected_section: which KB section should be referenced (for in-scope)
+#   - expected_properties: what the response should contain (for verification)
 
 traffic:
-  prompts: []
-    # Phase 5: List of test prompts with expected response properties
   volume:
-    total_prompts: 10  # Phase 5: Adjust based on evaluation sampling
-    batch_size: 5
-    delay_between_batches_seconds: 5
+    delay_between_prompts_seconds: 2
+    # All prompts sent in a single batch. With max_hourly_runs=100,
+    # 10 prompts is well within the limit.
+
+  prompts:
+    # --- In-scope: Company Overview (Section 1) ---
+    - id: q01
+      text: "When was Contoso Solar founded and where is it headquartered?"
+      is_out_of_scope: false
+      expected_section: "Section 1"
+      expected_properties:
+        should_contain: ["2019", "Austin"]
+        should_not_contain: []
+
+    # --- In-scope: Products (Section 2) ---
+    - id: q02
+      text: "What is the price of the SunMax 400 panel?"
+      is_out_of_scope: false
+      expected_section: "Section 2"
+      expected_properties:
+        should_contain: ["$299"]
+        should_not_contain: []
+
+    - id: q03
+      text: "What is the efficiency rating of the SunMax 500 Pro?"
+      is_out_of_scope: false
+      expected_section: "Section 2"
+      expected_properties:
+        should_contain: ["23.5%"]
+        should_not_contain: []
+
+    - id: q04
+      text: "How much energy can the PowerVault Home Battery store?"
+      is_out_of_scope: false
+      expected_section: "Section 2"
+      expected_properties:
+        should_contain: ["13.5"]
+        should_not_contain: []
+
+    # --- In-scope: Installation (Section 3) ---
+    - id: q05
+      text: "How much does residential installation cost for a system with 15 panels?"
+      is_out_of_scope: false
+      expected_section: "Section 3"
+      expected_properties:
+        should_contain: ["$3,000"]
+        should_not_contain: []
+
+    # --- In-scope: Warranty (Section 4) ---
+    - id: q06
+      text: "What is the warranty period for the SunMax 400?"
+      is_out_of_scope: false
+      expected_section: "Section 4"
+      expected_properties:
+        should_contain: ["25"]
+        should_not_contain: []
+
+    # --- In-scope: Support (Section 4) ---
+    - id: q07
+      text: "How can I contact Contoso Solar customer support?"
+      is_out_of_scope: false
+      expected_section: "Section 4"
+      expected_properties:
+        should_contain: ["1-800"]
+        should_not_contain: []
+
+    # --- In-scope: Financing (Section 5) ---
+    - id: q08
+      text: "What financing options does Contoso Solar offer?"
+      is_out_of_scope: false
+      expected_section: "Section 5"
+      expected_properties:
+        should_contain: ["loan", "lease"]
+        should_not_contain: []
+
+    # --- Out-of-scope: Should be refused ---
+    - id: q09
+      text: "Can you compare Contoso Solar panels with Tesla Solar Roof?"
+      is_out_of_scope: true
+      expected_section: null
+      expected_properties:
+        should_contain: []
+        should_not_contain: ["Tesla"]
+
+    - id: q10
+      text: "What is the best stock to invest in for renewable energy?"
+      is_out_of_scope: true
+      expected_section: null
+      expected_properties:
+        should_contain: []
+        should_not_contain: []
